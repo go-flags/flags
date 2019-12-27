@@ -135,7 +135,11 @@ type CreateValue os.File
 
 // NewCreateValue creates a new CreateValue.
 func NewCreateValue(init *os.File) *CreateValue {
-	return (*CreateValue)(init)
+	p := new(os.File)
+	if init != nil {
+		*p = *init
+	}
+	return (*CreateValue)(p)
 }
 
 // Set will set attempt to convert the given string to a value.

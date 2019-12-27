@@ -174,3 +174,37 @@ func (p *StringSliceValue) Set(s string) error {
 func (p StringSliceValue) String() string {
 	return fmt.Sprintf("[%s]", strings.Join([]string(p), ", "))
 }
+
+// OpenSliceValue represents a variable number open argument value.
+type OpenSliceValue []*os.File
+
+// NewOpenSliceValue creates a new OpenSliceValue.
+func NewOpenSliceValue(init []*os.File) *OpenSliceValue {
+	p := new([]*os.File)
+	*p = init
+	return (*OpenSliceValue)(p)
+}
+
+// Len will return the length of the slice value.
+func (v OpenSliceValue) Len() int { return len(v) }
+
+// Set will set attempt to convert and append the given string to the slice.
+func (p *OpenSliceValue) Set(s string) error {
+	ff := []*os.File(*p)
+	f, err := os.Open(s)
+	if err != nil {
+		return err
+	}
+	ff = append(ff, f)
+	*p = OpenSliceValue(ff)
+	return nil
+}
+
+// String satisfies the fmt.Stringer interface.
+func (v OpenSliceValue) String() string {
+	ss := make([]string, len(v))
+	for i, f := range v {
+		ss[i] = f.Name()
+	}
+	return fmt.Sprintf("[%s]", strings.Join(ss, ", "))
+}

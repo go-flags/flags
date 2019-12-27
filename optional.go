@@ -1,6 +1,9 @@
 package flags
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 var shortNames = []rune("#%123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
 
@@ -88,4 +91,11 @@ func (opt *Optional) StringSlice(short rune, long string, init []string, usage s
 	value := NewStringSliceValue(init)
 	opt.Register(short, long, value, usage)
 	return (*[]string)(value)
+}
+
+// OpenSlice adds a string slice flag to the optional argument list.
+func (opt *Optional) OpenSlice(short rune, long string, init []*os.File, usage string) *[]*os.File {
+	value := NewOpenSliceValue(init)
+	opt.Register(short, long, value, usage)
+	return (*[]*os.File)(value)
 }

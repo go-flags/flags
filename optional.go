@@ -86,6 +86,20 @@ func (opt *Optional) String(short rune, long, init, usage string) *string {
 	return (*string)(value)
 }
 
+// Open adds a file for reading to the optional argument list.
+func (opt *Optional) Open(short rune, long string, init *os.File, usage string) *os.File {
+	value := NewOpenValue(init)
+	opt.Register(short, long, value, usage)
+	return (*os.File)(value)
+}
+
+// Create adds a file for writing to the positional argument list.
+func (opt *Optional) Create(short rune, long string, init *os.File, usage string) *os.File {
+	value := NewCreateValue(init)
+	opt.Register(short, long, value, usage)
+	return (*os.File)(value)
+}
+
 // StringSlice adds a string slice flag to the optional argument list.
 func (opt *Optional) StringSlice(short rune, long string, init []string, usage string) *[]string {
 	value := NewStringSliceValue(init)

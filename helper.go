@@ -30,7 +30,7 @@ func ListCommands(prog Program) string {
 	builder.WriteString("available commands:")
 	for _, name := range names {
 		cmd := prog.Map[name]
-		builder.WriteString(formatHelp(name, cmd.Desc))
+		builder.WriteString("\n" + formatHelp(name, cmd.Desc))
 	}
 	return builder.String()
 }

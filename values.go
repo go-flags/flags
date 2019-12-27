@@ -108,7 +108,11 @@ type OpenValue os.File
 
 // NewOpenValue creates a new OpenValue.
 func NewOpenValue(init *os.File) *OpenValue {
-	return (*OpenValue)(init)
+	p := new(os.File)
+	if init != nil {
+		*p = *init
+	}
+	return (*OpenValue)(p)
 }
 
 // Set will set attempt to convert the given string to a value.

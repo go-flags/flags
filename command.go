@@ -72,7 +72,7 @@ func Compile() Command { return Main.Compile() }
 func Run(name, desc string, cmd Command) int {
 	ctx := &Context{name, desc, os.Args[1:]}
 	if err := cmd(ctx); err != nil {
-		fmt.Fprintln(os.Stdin, err)
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	return 0

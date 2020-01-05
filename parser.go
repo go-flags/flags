@@ -7,14 +7,21 @@ import (
 	"strings"
 )
 
+// ArgumentType represents the type of argument.
 type ArgumentType int
 
 const (
+	// LongType represents a long flag argument.
 	LongType ArgumentType = iota
+
+	// ShortType represents a short flag argument.
 	ShortType
+
+	// ValueType represents a plain value argument.
 	ValueType
 )
 
+// TypeOf returns the type of the given argument.
 func TypeOf(s string) ArgumentType {
 	if strings.HasPrefix(s, "--") && s != "--" {
 		return LongType
@@ -25,11 +32,14 @@ func TypeOf(s string) ArgumentType {
 	return ValueType
 }
 
+// Parser will parse a list of arguments with the given Positional and Optional
+// argument definitions.
 type Parser struct {
 	Pos *Positional
 	Opt *Optional
 }
 
+// NewParser returns a new Parser.
 func NewParser(pos *Positional, opt *Optional) Parser {
 	return Parser{pos, opt}
 }
@@ -70,6 +80,7 @@ func (parser Parser) handleValue(name string, args []string) ([]string, error) {
 
 var errHelp = errors.New("help")
 
+// Parse the given arguments using the argument definitions.
 func (parser Parser) Parse(args []string) error {
 	pos, opt := parser.Pos, parser.Opt
 	optmap := make(map[string]string)

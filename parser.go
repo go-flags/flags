@@ -3,7 +3,6 @@ package flags
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -171,26 +170,22 @@ func (parser Parser) Parse(args []string) error {
 		pos.Args[name].Value.Set(head)
 	}
 
-	if pos.In != nil && len(extra) > 0 {
-		head, extra = shift(extra)
-		info, err := os.Stat(head)
-		if err == nil && !info.IsDir() {
+	for len(extra) > 0 {
+		switch {
+		case pos.needInput():
+			head, extra = shift(extra)
 			if err := pos.In.Value.Set(head); err != nil {
-				return fmt.Errorf("in input file: %v", err)
+				return fmt.Errorf("in positional input file: %v", err)
 			}
+		case pos.needOutput():
+			head, extra = shift(extra)
+			if err := pos.Out.Value.Set(head); err != nil {
+				return fmt.Errorf("in positional output file: %v", err)
+			}
+		default:
+			extras := strings.Join(extra, "`, `")
+			return fmt.Errorf("extraneous arguments: `%s`", extras)
 		}
-	}
-
-	if pos.Out != nil && len(extra) > 0 {
-		head, extra = shift(extra)
-		if err := pos.Out.Value.Set(head); err != nil {
-			return fmt.Errorf("in output file: %v", err)
-		}
-	}
-
-	if len(extra) > 0 {
-		extras := strings.Join(extra, "`, `")
-		return fmt.Errorf("extraneous arguments: `%s`", extras)
 	}
 
 	return nil

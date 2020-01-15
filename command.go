@@ -3,6 +3,7 @@ package flags
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -39,15 +40,33 @@ func (prog *Program) Add(name, desc string, cmd Command) {
 	prog.Map[name] = CommandDescription{desc, cmd}
 }
 
+// ListCommands lists the commands registered to the given program.
+func (prog Program) ListCommands() string {
+	names := make([]string, len(prog.Map))
+	i := 0
+	for name := range prog.Map {
+		names[i] = name
+		i++
+	}
+	sort.Strings(names)
+	builder := strings.Builder{}
+	builder.WriteString("available commands:")
+	for _, name := range names {
+		cmd := prog.Map[name]
+		builder.WriteString("\n" + formatHelp(name, cmd.Desc))
+	}
+	return builder.String()
+}
+
 // Compile the subcommands into a single command.
 func (prog Program) Compile() Command {
 	return func(ctx *Context) error {
 		if len(ctx.Args) == 0 {
-			return fmt.Errorf("%s expected a command.\n\n%s", ctx.Name, ListCommands(prog))
+			return fmt.Errorf("%s expected a command.\n\n%s", ctx.Name, prog.ListCommands())
 		}
 		head, tail := shift(ctx.Args)
 		if strings.HasPrefix(head, "-h") || head == "--help" {
-			return fmt.Errorf("%s: %s\n\n%s", ctx.Name, ctx.Desc, ListCommands(prog))
+			return fmt.Errorf("%s: %s\n\n%s", ctx.Name, ctx.Desc, prog.ListCommands())
 		}
 		v, ok := prog.Map[head]
 		if !ok {
@@ -66,7 +85,9 @@ var Main = NewProgram()
 func Add(name, desc string, cmd Command) { Main.Add(name, desc, cmd) }
 
 // Compile the main program.
-func Compile() Command { return Main.Compile() }
+func Compile() Command {
+	return Main.Compile()
+}
 
 // Run the given command using os.Args.
 func Run(name, desc string, cmd Command) int {

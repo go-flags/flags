@@ -17,24 +17,6 @@ func formatHelp(name, desc string) string {
 	return "  " + name + "\n                        " + desc
 }
 
-// ListCommands lists the commands registered to the given program.
-func ListCommands(prog Program) string {
-	names := make([]string, len(prog.Map))
-	i := 0
-	for name := range prog.Map {
-		names[i] = name
-		i++
-	}
-	sort.Strings(names)
-	builder := strings.Builder{}
-	builder.WriteString("available commands:")
-	for _, name := range names {
-		cmd := prog.Map[name]
-		builder.WriteString("\n" + formatHelp(name, cmd.Desc))
-	}
-	return builder.String()
-}
-
 // Usage creates a usage string for the given argument definitions.
 func Usage(pos *Positional, opt *Optional) string {
 	builder := strings.Builder{}

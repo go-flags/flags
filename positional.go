@@ -72,9 +72,12 @@ func (pos *Positional) Input(usage string) *os.File {
 }
 
 func (pos *Positional) needInput() bool {
+	if pos.In == nil {
+		return false
+	}
 	value := pos.In.Value.(*OpenValue)
 	f := (*os.File)(value)
-	return pos.In != nil && isTerminal(f.Fd())
+	return isTerminal(f.Fd())
 }
 
 // Output adds a file which when omitted will read from os.Stdout.
@@ -85,7 +88,10 @@ func (pos *Positional) Output(usage string) *os.File {
 }
 
 func (pos *Positional) needOutput() bool {
+	if pos.Out == nil {
+		return false
+	}
 	value := pos.Out.Value.(*CreateValue)
 	f := (*os.File)(value)
-	return pos.Out != nil && isTerminal(f.Fd())
+	return isTerminal(f.Fd())
 }

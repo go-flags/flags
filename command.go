@@ -73,8 +73,7 @@ func (prog Program) Compile() Command {
 			return fmt.Errorf("unknown command name `%s`", head)
 		}
 		name := fmt.Sprintf("%s %s", ctx.Name, head)
-		err := v.Cmd(&Context{name, v.Desc, tail})
-		return err
+		return v.Cmd(&Context{name, v.Desc, tail})
 	}
 }
 
@@ -85,9 +84,7 @@ var Main = NewProgram()
 func Add(name, desc string, cmd Command) { Main.Add(name, desc, cmd) }
 
 // Compile the main program.
-func Compile() Command {
-	return Main.Compile()
-}
+func Compile() Command { return Main.Compile() }
 
 // Run the given command using os.Args.
 func Run(name, desc string, cmd Command) int {

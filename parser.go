@@ -44,7 +44,7 @@ func NewParser(pos *Positional, opt *Optional) Parser {
 }
 
 func (parser Parser) handleValue(name string, args []string) ([]string, error) {
-	pos, opt := parser.Pos, parser.Opt
+	opt := parser.Opt
 	head := ""
 
 	switch v := opt.Args[name].Value.(type) {
@@ -53,17 +53,9 @@ func (parser Parser) handleValue(name string, args []string) ([]string, error) {
 		*v = BoolValue(true)
 
 	case SliceValue:
-		n := 0
-		for _, arg := range args {
-			if TypeOf(arg) == ValueType {
-				n++
-			}
-		}
-
-		for TypeOf(args[0]) == ValueType && n > pos.Len() {
+		for len(args) > 0 && TypeOf(args[0]) == ValueType {
 			head, args = shift(args)
 			v.Set(head)
-			n--
 		}
 
 	default:
@@ -82,7 +74,6 @@ var errHelp = errors.New("help")
 // Parse the given arguments using the argument definitions.
 func (parser Parser) Parse(args []string) error {
 	pos, opt := parser.Pos, parser.Opt
-	optmap := make(map[string]string)
 	head := ""
 	extra := []string{}
 
@@ -99,7 +90,7 @@ func (parser Parser) Parse(args []string) error {
 				return errHelp
 			}
 
-			switch i := strings.IndexByte(head, '='); i {
+			switch i := strings.IndexByte(long, '='); i {
 			case -1:
 				if !opt.Args.Has(long) {
 					return fmt.Errorf("unknown flag `--%s`", long)
@@ -116,7 +107,9 @@ func (parser Parser) Parse(args []string) error {
 				if !opt.Args.Has(name) {
 					return fmt.Errorf("unknown flag `--%s`", name)
 				}
-				optmap[name] = value
+				if err := opt.Args[name].Value.Set(value); err != nil {
+					return err
+				}
 			}
 
 		// Process short flag name.

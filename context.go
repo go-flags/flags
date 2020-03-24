@@ -3,7 +3,7 @@ package flags
 import (
 	"fmt"
 
-	wrap "gopkg.in/ktnyt/wrap.v1"
+	wrap "gopkg.in/wrap.v1"
 )
 
 // Context carries the name, description, and arguments given to a command.

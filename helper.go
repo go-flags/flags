@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	wrap "gopkg.in/ktnyt/wrap.v1"
+	wrap "gopkg.in/wrap.v1"
 )
 
 func formatHelp(name, desc string) string {

@@ -10,7 +10,7 @@ import (
 
 func formatHelp(name, desc string) string {
 	desc = wrap.Space(desc, 55)
-	desc = strings.ReplaceAll(desc, "\n", "\n                        ")
+	desc = strings.Replace(desc, "\n", "\n                        ", -1)
 	if len(name) < 22 {
 		return "  " + name + strings.Repeat(" ", 22-len(name)) + desc
 	}

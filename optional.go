@@ -2,14 +2,31 @@ package flags
 
 import (
 	"fmt"
-	"os"
 )
 
-var shortNames = []rune("#%123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
+var shortNames = []rune("aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ")
 
 type optionalName struct {
 	Short rune
 	Long  string
+}
+
+const intMax = ^int(0)
+
+func runeLess(a, b rune) bool {
+	x, y := intMax, intMax
+	for i, r := range shortNames {
+		if a == r {
+			x = i
+		}
+		if b == r {
+			y = i
+		}
+	}
+	if x == intMax && y == intMax {
+		return a < b
+	}
+	return x < y
 }
 
 type byShort []optionalName
@@ -20,11 +37,11 @@ func (names byShort) Less(i, j int) bool {
 	a, b := names[i], names[j]
 	switch {
 	case a.Short != 0 && b.Short != 0:
-		return a.Short < b.Short
+		return runeLess(a.Short, b.Short)
 	case a.Short != 0:
-		return a.Short < []rune(b.Long)[0]
+		return runeLess(a.Short, []rune(b.Long)[0])
 	case b.Short != 0:
-		return []rune(a.Long)[0] < b.Short
+		return runeLess([]rune(a.Long)[0], b.Short)
 	default:
 		return a.Long < b.Long
 	}
@@ -44,13 +61,12 @@ func newOptional() *Optional {
 	return &Optional{Arguments{}, make(map[rune]string)}
 }
 
-// Optional represents the optional command line arguments.
-func (opt *Optional) Register(short rune, long string, value Value, usage string) {
+func (opt *Optional) register(short rune, long string, value Value, usage string) {
 	if opt.Args.Has(long) {
-		panic(fmt.Errorf("optional argument with long name `%s` already exists", long))
+		panic(fmt.Errorf("optional argument with long name %q already exists", long))
 	}
-	if _, ok := opt.Alias[short]; ok {
-		panic(fmt.Errorf("optional argument with short name `%c` already exists for long name `%s`", short, long))
+	if name, ok := opt.Alias[short]; ok {
+		panic(fmt.Errorf("optional argument with short name `%c` already exists for name %q", short, name))
 	}
 	if short != 0 {
 		opt.Alias[short] = long
@@ -61,55 +77,48 @@ func (opt *Optional) Register(short rune, long string, value Value, usage string
 // Switch adds a command line switch to the optional argument list.
 func (opt *Optional) Switch(short rune, long string, usage string) *bool {
 	value := NewBoolValue(false)
-	opt.Register(short, long, value, usage)
+	opt.register(short, long, value, usage)
 	return (*bool)(value)
 }
 
 // Int adds an integer flag to the optional argument list.
 func (opt *Optional) Int(short rune, long string, init int, usage string) *int {
 	value := NewIntValue(init)
-	opt.Register(short, long, value, usage)
+	opt.register(short, long, value, usage)
 	return (*int)(value)
+}
+
+// IntSlice adds an integer slice flag to the optional argument list.
+func (opt *Optional) IntSlice(short rune, long string, init []int, usage string) *[]int {
+	value := NewIntSliceValue(init)
+	opt.register(short, long, value, usage)
+	return (*[]int)(value)
 }
 
 // Float adds an float flag to the optional argument list.
 func (opt *Optional) Float(short rune, long string, init float64, usage string) *float64 {
 	value := NewFloatValue(init)
-	opt.Register(short, long, value, usage)
+	opt.register(short, long, value, usage)
 	return (*float64)(value)
 }
 
-// String adds a string flag to the optional argument list.
-func (opt *Optional) String(short rune, long, init, usage string) *string {
+// FloatSlice adds an float slice flag to the optional argument list.
+func (opt *Optional) FloatSlice(short rune, long string, init []float64, usage string) *[]float64 {
+	value := NewFloatSliceValue(init)
+	opt.register(short, long, value, usage)
+	return (*[]float64)(value)
+}
+
+// String adds an string flag to the optional argument list.
+func (opt *Optional) String(short rune, long string, init string, usage string) *string {
 	value := NewStringValue(init)
-	opt.Register(short, long, value, usage)
+	opt.register(short, long, value, usage)
 	return (*string)(value)
 }
 
-// Open adds a file for reading to the optional argument list.
-func (opt *Optional) Open(short rune, long string, init *os.File, usage string) *os.File {
-	value := NewOpenValue(init)
-	opt.Register(short, long, value, usage)
-	return (*os.File)(value)
-}
-
-// Create adds a file for writing to the positional argument list.
-func (opt *Optional) Create(short rune, long string, init *os.File, usage string) *os.File {
-	value := NewCreateValue(init)
-	opt.Register(short, long, value, usage)
-	return (*os.File)(value)
-}
-
-// StringSlice adds a string slice flag to the optional argument list.
+// StringSlice adds an string slice flag to the optional argument list.
 func (opt *Optional) StringSlice(short rune, long string, init []string, usage string) *[]string {
 	value := NewStringSliceValue(init)
-	opt.Register(short, long, value, usage)
+	opt.register(short, long, value, usage)
 	return (*[]string)(value)
-}
-
-// OpenSlice adds a string slice flag to the optional argument list.
-func (opt *Optional) OpenSlice(short rune, long string, init []*os.File, usage string) *[]*os.File {
-	value := NewOpenSliceValue(init)
-	opt.Register(short, long, value, usage)
-	return (*[]*os.File)(value)
 }

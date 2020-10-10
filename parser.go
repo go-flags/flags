@@ -3,6 +3,7 @@ package flags
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -18,101 +19,101 @@ const (
 
 	// ValueType represents a plain value argument.
 	ValueType
+
+	// Terminator represents an argument list terminator `--`.
+	Terminator
 )
+
+func mustMatchString(pattern string, s string) bool {
+	matched, err := regexp.MatchString(pattern, s)
+	if err != nil {
+		panic(err)
+	}
+	return matched
+}
 
 // TypeOf returns the type of the given argument.
 func TypeOf(s string) ArgumentType {
-	if strings.HasPrefix(s, "--") && s != "--" {
+	if s == "--" {
+		return Terminator
+	}
+	if strings.HasPrefix(s, "--") {
 		return LongType
 	}
-	if strings.HasPrefix(s, "-") && s != "-" {
+	if mustMatchString("-[^0-9]+", s) {
 		return ShortType
 	}
 	return ValueType
 }
 
-// Parser will parse a list of arguments with the given Positional and Optional
-// argument definitions.
-type Parser struct {
-	Pos *Positional
-	Opt *Optional
-}
-
-// NewParser returns a new Parser.
-func NewParser(pos *Positional, opt *Optional) Parser {
-	return Parser{pos, opt}
-}
-
-func (parser Parser) handleValue(name string, args []string) ([]string, error) {
-	opt := parser.Opt
-	head := ""
-
-	switch v := opt.Args[name].Value.(type) {
-	// Do not accept value arguments behind boolean flags.
-	case *BoolValue:
-		*v = BoolValue(true)
-
-	case SliceValue:
-		for len(args) > 0 && TypeOf(args[0]) == ValueType {
-			head, args = shift(args)
-			v.Set(head)
-		}
-
-	default:
-		head, args = shift(args)
-		if TypeOf(head) != ValueType {
-			return nil, fmt.Errorf("value not given for flag `--%s`", name)
-		}
-		v.Set(head)
-	}
-
-	return args, nil
-}
-
 var errHelp = errors.New("help")
+var errRonn = errors.New("ronn")
+var errComp = errors.New("comp")
 
-// Parse the given arguments using the argument definitions.
-func (parser Parser) Parse(args []string) error {
-	pos, opt := parser.Pos, parser.Opt
+// Parse will parse the argument list according to the positional and optional
+// argument lists provided and return extraneous argument elements and an error
+// value if present.
+func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 	head := ""
 	extra := []string{}
+	terminated := false
 
-	for len(args) > 0 {
+	for len(args) > 0 && !terminated {
 		head, args = shift(args)
 
-		switch TypeOf(head) {
+		switch head {
+		case "generate-ronn-templates":
+			return nil, errRonn
+		case "generate-completions":
+			return nil, errComp
+		}
 
-		// Process long flag name.
+		switch TypeOf(head) {
 		case LongType:
 			long := head[2:]
 
 			if long == "help" {
-				return errHelp
+				return nil, errHelp
 			}
 
 			switch i := strings.IndexByte(long, '='); i {
 			case -1:
-				if !opt.Args.Has(long) {
-					return fmt.Errorf("unknown flag `--%s`", long)
-				}
-				var err error
-				args, err = parser.handleValue(long, args)
-				if err != nil {
-					return fmt.Errorf("in flag `--%s`: %v", long, err)
+				arg, ok := opt.Args[long]
+				if !ok {
+					return nil, fmt.Errorf("unknown flag %q", long)
 				}
 
-			// Flag has form `--long=value`.
-			default:
-				name, value := long[:i], long[i+1:]
-				if !opt.Args.Has(name) {
-					return fmt.Errorf("unknown flag `--%s`", name)
+				switch v := arg.Value.(type) {
+				case *BoolValue:
+					*v = BoolValue(true)
+				case SliceValue:
+					for len(args)+len(extra) > pos.Len() && TypeOf(args[0]) == ValueType {
+						head, args = shift(args)
+						if err := v.Set(head); err != nil {
+							return nil, fmt.Errorf("while setting value for flag %q: %v", long, err)
+						}
+					}
+				default:
+					head, args = shift(args)
+					if TypeOf(head) != ValueType {
+						return nil, fmt.Errorf("while setting value for flag %q: no value given", long)
+					}
+					if err := v.Set(head); err != nil {
+						return nil, fmt.Errorf("while setting value for flag %q: %v", long, err)
+					}
 				}
-				if err := opt.Args[name].Value.Set(value); err != nil {
-					return err
+
+			default:
+				name, value := long[:1], long[i+1:]
+				arg, ok := opt.Args[name]
+				if !ok {
+					return nil, fmt.Errorf("unknown flag %q", name)
+				}
+				if err := arg.Value.Set(value); err != nil {
+					return nil, fmt.Errorf("while setting value for flag %q: %v", long, err)
 				}
 			}
 
-		// Process short flag name.
 		case ShortType:
 			rr := []rune(head[1:])
 			var r rune
@@ -121,65 +122,70 @@ func (parser Parser) Parse(args []string) error {
 				r, rr = rr[0], rr[1:]
 
 				if r == 'h' {
-					return errHelp
+					return nil, errHelp
 				}
 
 				name, ok := opt.Alias[r]
 				if !ok {
-					return fmt.Errorf("unknown shorthand `%c`", r)
+					return nil, fmt.Errorf("unknown short option `%c`", r)
 				}
 
-				switch len(rr) {
-				// The last shorthand flag can be a non-boolean value
-				case 0:
-					var err error
-					args, err = parser.handleValue(name, args)
-					if err != nil {
-						return fmt.Errorf("in flag `--%s`: %v", name, err)
+				switch v := opt.Args[name].Value.(type) {
+				case *BoolValue:
+					*v = BoolValue(true)
+				case SliceValue:
+					for len(args)+len(extra) > pos.Len() && TypeOf(args[0]) == ValueType {
+						head, args = shift(args)
+						if err := v.Set(head); err != nil {
+							return nil, fmt.Errorf("while setting value for flag %q: %v", name, err)
+						}
 					}
-
 				default:
-					switch v := opt.Args[name].Value.(type) {
-					case *BoolValue:
-						*v = BoolValue(true)
-					default:
-						return fmt.Errorf("flag `%s for shorthand `%c` is not boolean", name, r)
+					head, args = shift(args)
+					if TypeOf(head) != ValueType {
+						return nil, fmt.Errorf("while setting value for flag %q: no value given", name)
+					}
+					if err := v.Set(head); err != nil {
+						return nil, fmt.Errorf("while setting value for flag %q: %v", name, err)
 					}
 				}
 			}
 
-		// The argument is not associated to a flag.
-		default:
+		case ValueType:
 			extra = append(extra, head)
+		case Terminator:
+			extra = append(extra, args...)
+			terminated = true
 		}
 	}
 
+	n := 0
 	for i, name := range pos.Order {
 		if len(extra) == 0 {
-			missing := strings.Join(pos.Order[i:], "`, `")
-			return fmt.Errorf("missing positional argument(s): `%s`", missing)
-		}
-		head, extra = shift(extra)
-		pos.Args[name].Value.Set(head)
-	}
-
-	for len(extra) > 0 {
-		switch {
-		case pos.needInput():
-			head, extra = shift(extra)
-			if err := pos.In.Value.Set(head); err != nil {
-				return fmt.Errorf("in positional input file: %v", err)
+			list := make([]string, len(pos.Order)-i)
+			for j, name := range pos.Order[i:] {
+				list[j] = fmt.Sprintf("%q", name)
 			}
-		case pos.needOutput():
-			head, extra = shift(extra)
-			if err := pos.Out.Value.Set(head); err != nil {
-				return fmt.Errorf("in positional output file: %v", err)
+			missing := strings.Join(list, ", ")
+			return extra, fmt.Errorf("missing positional arguments(s): %s", missing)
+		}
+
+		switch pos.Args[name].Value.(type) {
+		case *StringSliceValue:
+			for len(extra)+n > pos.Len() {
+				head, extra = shift(extra)
+				if err := pos.Args[name].Value.Set(head); err != nil {
+					return extra, err
+				}
 			}
 		default:
-			extras := strings.Join(extra, "`, `")
-			return fmt.Errorf("extraneous arguments: `%s`", extras)
+			head, extra = shift(extra)
+			if err := pos.Args[name].Value.Set(head); err != nil {
+				return extra, err
+			}
+			n++
 		}
 	}
 
-	return nil
+	return extra, nil
 }

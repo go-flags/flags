@@ -11,18 +11,3 @@ type SliceValue interface {
 	Value
 	Len() int
 }
-
-// Argument represents a value-usages pair.
-type Argument struct {
-	Value Value
-	Usage string
-}
-
-// Arguments is a map of names and arguments.
-type Arguments map[string]Argument
-
-// Has tests if the given name is registered as an argument.
-func (args *Arguments) Has(name string) bool {
-	_, ok := (*args)[name]
-	return ok
-}

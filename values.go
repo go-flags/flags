@@ -2,9 +2,7 @@ package flags
 
 import (
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 )
 
 // BoolValue represents a boolean argument value.
@@ -17,7 +15,7 @@ func NewBoolValue(init bool) *BoolValue {
 	return (*BoolValue)(p)
 }
 
-// Set will set attempt to convert the given string to a value.
+// Set will attempt to convert the given string to a value.
 func (p *BoolValue) Set(s string) error {
 	v, err := strconv.ParseBool(s)
 	if err != nil {
@@ -42,7 +40,7 @@ func NewIntValue(init int) *IntValue {
 	return (*IntValue)(p)
 }
 
-// Set will set attempt to convert the given string to a value.
+// Set will attempt to convert the given string to a value.
 func (p *IntValue) Set(s string) error {
 	v, err := strconv.Atoi(s)
 	if err != nil {
@@ -67,7 +65,7 @@ func NewFloatValue(init float64) *FloatValue {
 	return (*FloatValue)(p)
 }
 
-// Set will set attempt to convert the given string to a value.
+// Set will attempt to convert the given string to a value.
 func (p *FloatValue) Set(s string) error {
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
@@ -92,7 +90,7 @@ func NewStringValue(init string) *StringValue {
 	return (*StringValue)(p)
 }
 
-// Set will set attempt to convert the given string to a value.
+// Set will attempt to convert the given string to a value.
 func (p *StringValue) Set(s string) error {
 	*p = StringValue(s)
 	return nil
@@ -103,58 +101,64 @@ func (p StringValue) String() string {
 	return string(p)
 }
 
-// OpenValue represents a file argument value for opening.
-type OpenValue os.File
+// IntSliceValue represents a variable number int argument value.
+type IntSliceValue []int
 
-// NewOpenValue creates a new OpenValue.
-func NewOpenValue(init *os.File) *OpenValue {
-	p := new(os.File)
-	if init != nil {
-		*p = *init
-	}
-	return (*OpenValue)(p)
+// NewIntSliceValue creates a new IntSliceValue.
+func NewIntSliceValue(init []int) *IntSliceValue {
+	p := new([]int)
+	*p = init
+	return (*IntSliceValue)(p)
 }
 
-// Set will set attempt to convert the given string to a value.
-func (p *OpenValue) Set(s string) error {
-	f, err := os.Open(s)
+// Len will return the length of the slice value.
+func (p IntSliceValue) Len() int { return len(p) }
+
+// Set will attempt to convert and append the given string to the slice.
+func (p *IntSliceValue) Set(s string) error {
+	ii := []int(*p)
+	v, err := strconv.Atoi(s)
 	if err != nil {
-		return err
+		return fmt.Errorf("`%s` cannot be interpreted as %T", s, p)
 	}
-	*p = OpenValue(*f)
+	ii = append(ii, v)
+	*p = IntSliceValue(ii)
 	return nil
 }
 
 // String satisfies the fmt.Stringer interface.
-func (p *OpenValue) String() string {
-	return (*os.File)(p).Name()
+func (p IntSliceValue) String() string {
+	return fmt.Sprintf("%v", []int(p))
 }
 
-// CreateValue represents a file argument value for creating.
-type CreateValue os.File
+// FloatSliceValue represents a variable number float argument value.
+type FloatSliceValue []float64
 
-// NewCreateValue creates a new CreateValue.
-func NewCreateValue(init *os.File) *CreateValue {
-	p := new(os.File)
-	if init != nil {
-		*p = *init
-	}
-	return (*CreateValue)(p)
+// NewFloatSliceValue creates a new FloatSliceValue.
+func NewFloatSliceValue(init []float64) *FloatSliceValue {
+	p := new([]float64)
+	*p = init
+	return (*FloatSliceValue)(p)
 }
 
-// Set will set attempt to convert the given string to a value.
-func (p *CreateValue) Set(s string) error {
-	f, err := os.Create(s)
+// Len will return the length of the slice value.
+func (p FloatSliceValue) Len() int { return len(p) }
+
+// Set will attempt to convert and append the given string to the slice.
+func (p *FloatSliceValue) Set(s string) error {
+	ff := []float64(*p)
+	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return err
+		return fmt.Errorf("`%s` cannot be interpreted as %T", s, v)
 	}
-	*p = CreateValue(*f)
+	ff = append(ff, v)
+	*p = FloatSliceValue(ff)
 	return nil
 }
 
 // String satisfies the fmt.Stringer interface.
-func (p *CreateValue) String() string {
-	return (*os.File)(p).Name()
+func (p FloatSliceValue) String() string {
+	return fmt.Sprintf("%v", []float64(p))
 }
 
 // StringSliceValue represents a variable number string argument value.
@@ -168,9 +172,9 @@ func NewStringSliceValue(init []string) *StringSliceValue {
 }
 
 // Len will return the length of the slice value.
-func (v StringSliceValue) Len() int { return len(v) }
+func (p StringSliceValue) Len() int { return len(p) }
 
-// Set will set attempt to convert and append the given string to the slice.
+// Set will attempt to convert and append the given string to the slice.
 func (p *StringSliceValue) Set(s string) error {
 	ss := []string(*p)
 	ss = append(ss, s)
@@ -180,39 +184,5 @@ func (p *StringSliceValue) Set(s string) error {
 
 // String satisfies the fmt.Stringer interface.
 func (p StringSliceValue) String() string {
-	return fmt.Sprintf("[%s]", strings.Join([]string(p), ", "))
-}
-
-// OpenSliceValue represents a variable number open argument value.
-type OpenSliceValue []*os.File
-
-// NewOpenSliceValue creates a new OpenSliceValue.
-func NewOpenSliceValue(init []*os.File) *OpenSliceValue {
-	p := new([]*os.File)
-	*p = init
-	return (*OpenSliceValue)(p)
-}
-
-// Len will return the length of the slice value.
-func (v OpenSliceValue) Len() int { return len(v) }
-
-// Set will set attempt to convert and append the given string to the slice.
-func (p *OpenSliceValue) Set(s string) error {
-	ff := []*os.File(*p)
-	f, err := os.Open(s)
-	if err != nil {
-		return err
-	}
-	ff = append(ff, f)
-	*p = OpenSliceValue(ff)
-	return nil
-}
-
-// String satisfies the fmt.Stringer interface.
-func (v OpenSliceValue) String() string {
-	ss := make([]string, len(v))
-	for i, f := range v {
-		ss[i] = f.Name()
-	}
-	return fmt.Sprintf("[%s]", strings.Join(ss, ", "))
+	return fmt.Sprintf("%v", []string(p))
 }
